@@ -1,0 +1,79 @@
+.changelog-layout {
+  display: grid;
+  grid-template-columns: 0.85fr 1.25fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.changelog-form-card,
+.changelog-timeline-card {
+  padding: 1rem;
+}
+
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  padding-left: 1.2rem;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  width: 2px;
+  background: var(--fn-border);
+}
+
+.timeline-entry {
+  position: relative;
+  padding: 1rem;
+}
+
+.timeline-entry::before {
+  content: "";
+  position: absolute;
+  left: -1.02rem;
+  top: 1.2rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--fn-primary);
+  box-shadow: 0 0 18px var(--fn-primary-soft);
+}
+
+.timeline-version {
+  display: inline-flex;
+  margin-bottom: 0.6rem;
+}
+
+.timeline-title {
+  margin: 0;
+  font-weight: 900;
+}
+
+.timeline-date {
+  margin: 0.35rem 0 0;
+  color: var(--fn-muted);
+  font-size: 0.84rem;
+}
+
+.timeline-notes {
+  margin: 0.8rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--fn-muted);
+  line-height: 1.7;
+}
+
+.note-input-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+@media (max-width: 992px) {
+  .changelog-layout {
+    grid-template-columns: 1fr;
+  }
+}

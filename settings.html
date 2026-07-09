@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fazal Notes | Settings</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/settings.css" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <div id="sidebarMount"></div>
+
+        <main class="app-main">
+            <div class="page-container">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Workspace control center</p>
+                        <h1 class="page-title">Settings</h1>
+                        <p class="page-description">
+                            Customize the theme, control transitions, export/import your workspace, or reset local data.
+                        </p>
+                    </div>
+                </header>
+
+                <section class="settings-layout">
+                    <div class="settings-grid">
+                        <section class="glass-card settings-card">
+                            <h2 class="h5 mb-3">Theme Customizer</h2>
+                            <div id="themeCustomizer"></div>
+                        </section>
+
+                        <section class="glass-card settings-card">
+                            <h2 class="h5 mb-3">Theme Presets</h2>
+                            <div id="themePresets" class="preset-grid mb-4"></div>
+
+                            <h2 class="h5 mb-3">Personal Settings</h2>
+
+                            <div class="setting-row">
+                                <label for="displayNameInput">Display Name</label>
+                                <input id="displayNameInput" class="form-control" />
+                            </div>
+
+                            <div class="setting-row">
+                                <label for="transitionSpeedInput">Transition Speed</label>
+                                <input id="transitionSpeedInput" class="form-range" type="range" min="160" max="900"
+                                    step="20" />
+                                <span id="transitionSpeedLabel" class="badge-soft"></span>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input id="compactSidebarInput" class="form-check-input" type="checkbox">
+                                <label class="form-check-label" for="compactSidebarInput">Compact sidebar</label>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2">
+                                <button id="savePersonalBtn" class="btn-fn" type="button">Save Settings</button>
+                                <button id="resetThemeBtn" class="btn-ghost" type="button">Reset Theme</button>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="settings-grid">
+                        <section class="glass-card settings-card">
+                            <h2 class="h5 mb-3">Workspace Data</h2>
+
+                            <div class="workspace-actions mb-3">
+                                <button id="exportWorkspaceBtn" class="btn-fn" type="button">Export JSON</button>
+                                <button id="resetDemoBtn" class="btn-ghost" type="button">Reset Demo Data</button>
+                                <button id="clearWorkspaceBtn" class="btn-ghost" type="button">Clear
+                                    LocalStorage</button>
+                            </div>
+
+                            <div class="import-box">
+                                <label class="form-label" for="importWorkspaceInput">Import Workspace JSON</label>
+                                <input id="importWorkspaceInput" class="form-control" type="file"
+                                    accept="application/json,.json">
+                            </div>
+                        </section>
+
+                        <section class="glass-card settings-card">
+                            <h2 class="h5 mb-3">Live Preview</h2>
+
+                            <div class="theme-preview">
+                                <div class="theme-preview-card">
+                                    <p class="eyebrow">Preview</p>
+                                    <h3 class="h4">A calm writing workspace</h3>
+                                    <p style="color: var(--fn-muted);">
+                                        Theme changes apply live across the whole app using CSS custom properties.
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge-soft">Primary</span>
+                                        <span class="badge-soft status-resolved">Success</span>
+                                        <span class="badge-soft status-open">Warning</span>
+                                        <span class="badge-soft status-danger">Danger</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+
+</html>
