@@ -1,6 +1,37 @@
 "use strict";
 
+function ensureV2ChangelogEntry() {
+    const workspace = loadWorkspace();
+
+    const alreadyExists = workspace.changelogEntries.some((entry) => entry.version === "2.0.0");
+
+    if (alreadyExists) return;
+
+    workspace.appVersion = "2.0.0";
+
+    workspace.changelogEntries.unshift({
+        id: generateId("changelog"),
+        version: "2.0.0",
+        title: "Product iteration release shipped",
+        notes: [
+            "Added roadmap board with planned, in-progress, and shipped columns",
+            "Added note-to-note linking using [[Note Title]] syntax",
+            "Added per-note revision history with restore",
+            "Added Trash with restore and permanent delete",
+            "Added feedback status workflow and roadmap promotion",
+            "Added deeper analytics: streaks, top tags, heatmap, and word-count trends"
+        ],
+        releasedAt: new Date().toISOString()
+    });
+
+    saveWorkspace(workspace);
+    logUsageEvent("version_2_shipped", "2.0.0");
+    addActivityLog("Changelog", "Shipped Version 2.0.0", "V2 product iteration release completed.");
+}
+
 function renderChangelogTimeline() {
+    ensureV2ChangelogEntry();
+
     const workspace = loadWorkspace();
 
     const entries = workspace.changelogEntries

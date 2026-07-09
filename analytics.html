@@ -19,11 +19,11 @@
             <div class="page-container">
                 <header class="page-header">
                     <div>
-                        <p class="eyebrow">Real usage analytics</p>
+                        <p class="eyebrow">Version 2.0 usage intelligence</p>
                         <h1 class="page-title">Analytics</h1>
                         <p class="page-description">
-                            Every number here is computed from notes, folders, tags, and real usage events stored in
-                            localStorage.
+                            Real stats, streaks, tags, time-of-day activity, and word-count trends computed from local
+                            workspace data.
                         </p>
                     </div>
                 </header>
@@ -45,6 +45,32 @@
                             last 30 days.</p>
                         <div class="chart-wrap">
                             <canvas id="activityChart"></canvas>
+                        </div>
+                    </article>
+
+                    <div class="analytics-two-column">
+                        <article class="glass-card chart-card">
+                            <h2 class="h5 mb-3">Writing Streaks</h2>
+                            <div id="streaks" class="streak-list"></div>
+                        </article>
+
+                        <article class="glass-card chart-card">
+                            <h2 class="h5 mb-3">Most Used Tags</h2>
+                            <div id="topTags" class="tag-rank-list"></div>
+                        </article>
+                    </div>
+
+                    <article class="glass-card chart-card">
+                        <h2 class="h5 mb-3">Time-of-Day Activity</h2>
+                        <div id="timeHeatmap" class="heatmap-grid"></div>
+                    </article>
+
+                    <article class="glass-card chart-card">
+                        <h2 class="h5 mb-1">Word Count Trend</h2>
+                        <p class="small mb-3" style="color: var(--fn-muted);">Computed from current notes plus revision
+                            snapshots.</p>
+                        <div class="chart-wrap">
+                            <canvas id="wordTrendChart"></canvas>
                         </div>
                     </article>
                 </section>

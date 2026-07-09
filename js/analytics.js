@@ -2,6 +2,7 @@
 
 let usageChartInstance = null;
 let activityChartInstance = null;
+let wordTrendChartInstance = null;
 
 function dateKey(dateString) {
     const date = new Date(dateString);
@@ -20,10 +21,22 @@ function getLastDays(count) {
     return days;
 }
 
+function countWords(text) {
+    return String(text || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+}
+
+function chartTextColor(tokenName) {
+    return getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
+}
+
 function renderCoreStats() {
     const workspace = loadWorkspace();
     const activeNotes = workspace.notes.filter((note) => !note.deletedAt);
     const tags = getAllTags(activeNotes);
+    const totalWords = activeNotes.reduce((sum, note) => sum + countWords(note.content), 0);
 
     const stats = [
         {
@@ -42,9 +55,9 @@ function renderCoreStats() {
             meta: "Unique tags in use"
         },
         {
-            label: "Usage Events",
-            value: workspace.usageEvents.length,
-            meta: "Real logged actions"
+            label: "Total Words",
+            value: totalWords,
+            meta: "Across active notes"
         }
     ];
 
@@ -83,31 +96,7 @@ function renderUsageChart() {
                 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-text")
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-muted")
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-muted")
-                    }
-                }
-            }
-        }
+        options: getChartOptions()
     });
 }
 
@@ -144,34 +133,197 @@ function renderActivityChart() {
                 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-text")
-                    }
+        options: getChartOptions()
+    });
+}
+
+function calculateStreaks(events) {
+    const writingTypes = ["note_created", "note_edited"];
+    const sortedDays = [
+        ...new Set(
+            events
+                .filter((event) => writingTypes.includes(event.type))
+                .map((event) => dateKey(event.createdAt))
+        )
+    ].sort();
+
+    if (!sortedDays.length) {
+        return {
+            current: 0,
+            longest: 0,
+            totalWritingDays: 0
+        };
+    }
+
+    let longest = 1;
+    let running = 1;
+
+    for (let index = 1; index < sortedDays.length; index += 1) {
+        const previous = new Date(sortedDays[index - 1]);
+        const current = new Date(sortedDays[index]);
+        const diffDays = Math.round((current - previous) / 86400000);
+
+        if (diffDays === 1) {
+            running += 1;
+            longest = Math.max(longest, running);
+        } else {
+            running = 1;
+        }
+    }
+
+    return {
+        current: getWritingStreak(events),
+        longest,
+        totalWritingDays: sortedDays.length
+    };
+}
+
+function renderStreaks() {
+    const workspace = loadWorkspace();
+    const streaks = calculateStreaks(workspace.usageEvents);
+
+    const items = [
+        ["Current streak", `${streaks.current} days`],
+        ["Longest streak", `${streaks.longest} days`],
+        ["Total writing days", `${streaks.totalWritingDays} days`]
+    ];
+
+    $("#streaks").html(
+        items.map(([label, value]) => `
+      <div class="rank-item">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `).join("")
+    );
+}
+
+function renderTopTags() {
+    const workspace = loadWorkspace();
+    const activeNotes = workspace.notes.filter((note) => !note.deletedAt);
+    const counts = {};
+
+    activeNotes.forEach((note) => {
+        (note.tags || []).forEach((tag) => {
+            counts[tag] = (counts[tag] || 0) + 1;
+        });
+    });
+
+    const tags = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+    if (!tags.length) {
+        $("#topTags").html(renderEmptyState("No tags in use yet."));
+        return;
+    }
+
+    $("#topTags").html(
+        tags.map(([tag, count]) => `
+      <div class="rank-item">
+        <span>#${escapeHtml(tag)}</span>
+        <strong>${count}</strong>
+      </div>
+    `).join("")
+    );
+}
+
+function renderTimeOfDayHeatmap() {
+    const workspace = loadWorkspace();
+    const buckets = Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        count: 0
+    }));
+
+    workspace.usageEvents.forEach((event) => {
+        const hour = new Date(event.createdAt).getHours();
+        buckets[hour].count += 1;
+    });
+
+    $("#timeHeatmap").html(
+        buckets.map((bucket) => `
+      <div class="heatmap-cell">
+        <span class="heatmap-hour">${String(bucket.hour).padStart(2, "0")}:00</span>
+        <span class="heatmap-count">${bucket.count}</span>
+      </div>
+    `).join("")
+    );
+}
+
+function renderWordCountTrend() {
+    const workspace = loadWorkspace();
+    const days = getLastDays(14);
+
+    const values = days.map((day) => {
+        let total = 0;
+
+        workspace.notes.forEach((note) => {
+            if (!note.deletedAt && dateKey(note.updatedAt || note.createdAt) <= day) {
+                total += countWords(note.content);
+            }
+
+            (note.revisions || []).forEach((revision) => {
+                if (dateKey(revision.createdAt) === day) {
+                    total += countWords(revision.content);
+                }
+            });
+        });
+
+        return total;
+    });
+
+    if (wordTrendChartInstance) wordTrendChartInstance.destroy();
+
+    wordTrendChartInstance = new Chart(document.getElementById("wordTrendChart"), {
+        type: "line",
+        data: {
+            labels: days,
+            datasets: [
+                {
+                    label: "Words",
+                    data: values,
+                    tension: 0.35
+                }
+            ]
+        },
+        options: getChartOptions()
+    });
+}
+
+function getChartOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: {
+                    color: chartTextColor("--fn-text")
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    color: chartTextColor("--fn-muted"),
+                    maxRotation: 45,
+                    minRotation: 45
+                },
+                grid: {
+                    color: "rgba(255,255,255,0.08)"
                 }
             },
-            scales: {
-                x: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-muted"),
-                        maxRotation: 45,
-                        minRotation: 45
-                    }
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0,
+                    color: chartTextColor("--fn-muted")
                 },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        color: getComputedStyle(document.documentElement).getPropertyValue("--fn-muted")
-                    }
+                grid: {
+                    color: "rgba(255,255,255,0.08)"
                 }
             }
         }
-    });
+    };
 }
 
 $(document).ready(function () {
@@ -180,4 +332,8 @@ $(document).ready(function () {
     renderCoreStats();
     renderUsageChart();
     renderActivityChart();
+    renderStreaks();
+    renderTopTags();
+    renderTimeOfDayHeatmap();
+    renderWordCountTrend();
 });

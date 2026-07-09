@@ -1,21 +1,23 @@
 # Fazal Notes
 
-A real note-taking app I built and use daily — not a demo. This repo documents its actual version history: a 1.0 release, real usage analytics, a real feedback/bug loop, and a planned 2.0 release built in response to that feedback.
+A real note-taking app I built and use daily — not a demo. This repo documents its actual version history: a 1.0 release, real usage analytics, a real feedback/bug loop, and a 2.0 release built in response to that feedback.
 
 ## Live Links
 
-- GitHub Repository: [fazal305/fazal-notes](https://github.com/fazal305/fazal-notes)
-- Live Demo: [https://fazal305.github.io/fazal-notes/](https://fazal305.github.io/fazal-notes/)
+- GitHub Repository: [fazal305/Fazal-Notes](https://github.com/fazal305/Fazal-Notes)
+- Live Demo: [https://fazal305.github.io/Fazal-Notes/](https://fazal305.github.io/Fazal-Notes/)
 
 ## Overview
 
-Fazal Notes is a local-first browser notes app with folders, tags, pinning, search, markdown preview, feedback tracking, changelog discipline, and real usage analytics. It runs with HTML, CSS, JavaScript, Bootstrap, jQuery, Chart.js, and localStorage.
+Fazal Notes is a local-first browser note-taking product with folders, tags, search, pinning, markdown preview, note linking, revision history, Trash recovery, feedback tracking, a public-style roadmap, changelog discipline, and real usage analytics.
+
+It is built as a real product lifecycle project: Version 1.0 shipped the usable notes app, then Version 2.0 added iteration features based on the product feedback loop.
 
 ## Version History
 
 ### 1.0.0
 
-Version 1.0.0 shipped the first complete usable release:
+Initial usable release:
 
 - Create, edit, delete, pin, and search notes
 - Organize notes with folders and tags
@@ -24,18 +26,64 @@ Version 1.0.0 shipped the first complete usable release:
 - View analytics computed from real usage events
 - View a real changelog timeline
 - Customize theme and workspace settings
-- Export/import full workspace JSON
+- Export/import workspace JSON
 - Reset demo data or clear localStorage
+
+### 2.0.0
+
+Product iteration release:
+
+- Added Roadmap board with Planned, In Progress, and Shipped columns
+- Added note-to-note linking using `[[Note Title]]`
+- Added per-note revision history with restore
+- Added Trash with restore and permanent delete
+- Added feedback status workflow: open → in progress → resolved
+- Added promote-to-roadmap workflow
+- Added deeper analytics: streaks, top tags, time-of-day heatmap, and word-count trends
 
 ## Pages
 
 - Dashboard
 - Notes
-- Feedback
+- Feedback & Bug Reports
 - Roadmap
 - Analytics
 - Changelog
 - Settings
+
+## Features
+
+### Version 1.0
+
+- Notes CRUD
+- Folders
+- Tags
+- Search and filters
+- Pin/unpin notes
+- Markdown preview
+- Feedback submission
+- Basic analytics
+- Changelog
+- Theme settings
+- Export/import workspace JSON
+
+### Version 2.0
+
+- Linked notes
+- Revision history
+- Restore previous versions
+- Soft-delete Trash
+- Restore deleted notes
+- Permanent delete
+- Roadmap board
+- Roadmap voting
+- Roadmap status movement
+- Feedback status workflow
+- Promote feedback to roadmap
+- Writing streaks
+- Most-used tags
+- Time-of-day activity
+- Word-count trend
 
 ## Technologies Used
 
@@ -49,15 +97,34 @@ Version 1.0.0 shipped the first complete usable release:
 - Blob API
 - Clipboard API
 
+## Learning Outcomes
+
+- Building a real local-first browser product
+- Designing a shared workspace data model
+- Logging real usage events for analytics
+- Creating a feedback-to-roadmap product loop
+- Managing changelog and version history
+- Implementing revision history and restore
+- Creating a dynamic theme system with CSS variables
+- Building a multi-page no-build-tool application
+
 ## Architecture Notes
 
-Fazal Notes uses a multi-page architecture. Each page has its own HTML, CSS, and JavaScript file, while shared helpers live in `js/shared.js`.
+Fazal Notes uses a multi-page architecture. Each page has its own HTML, CSS, and JavaScript file. Shared helpers, localStorage state, theme application, navigation, and transitions live in `js/shared.js`.
 
-All main app data is stored in one shared localStorage workspace. Notes, folders, feedback items, feature requests, changelog entries, usage events, and settings all read from the same workspace object.
+All product data is stored in one shared localStorage workspace:
 
-Analytics are not fake numbers. They are computed from real `usageEvents` created when the user creates notes, edits notes, deletes notes, submits feedback, exports data, and performs other meaningful actions.
+- notes
+- folders
+- feedback items
+- feature requests
+- usage events
+- changelog entries
+- activity log
+- settings
+- theme tokens
 
-The theme system is dynamic. CSS custom properties are updated from the workspace theme settings, and users can customize colors, radius, fonts, sidebar mode, and transition speed.
+Analytics are computed from real app data, especially `workspace.usageEvents`. This means the charts and stats update when the user actually creates notes, edits notes, submits feedback, upvotes roadmap items, exports data, or performs other meaningful actions.
 
 ## Folder Structure
 
@@ -98,11 +165,8 @@ fazal-notes/
 ```
 
 How To Run Locally
-
-Clone the repository:
-
-git clone https://github.com/fazal305/fazal-notes.git
-cd fazal-notes
+git clone https://github.com/fazal305/Fazal-Notes.git
+cd Fazal-Notes
 
 Open:
 
@@ -112,18 +176,17 @@ No build tools are required.
 
 How I Use It
 
-I use Fazal Notes as a personal writing and product-thinking workspace. It helps me capture project ideas, organize notes by folders and tags, track issues, and review my own usage through analytics.
+I use Fazal Notes as a personal writing and product-thinking workspace. It helps me capture project notes, organize ideas, track bugs, collect feature requests, and review real usage patterns through analytics.
 
-Version 2.0 Roadmap
-
-Planned for the next release:
-
-Note-to-note linking with [[Note Title]]
-Per-note revision history and restore
-Soft-delete Trash with recovery
-Roadmap board with voting
-Feedback status workflow
-Deeper analytics with streaks, top tags, time-of-day activity, and word count trends
+Future Improvements
+Search result highlighting
+Better markdown parser
+Export individual notes
+Import Markdown files
+Daily note templates
+Keyboard shortcuts
+Optional cloud sync
+Better mobile editor layout
 License
 
 MIT License

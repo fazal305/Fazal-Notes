@@ -19,10 +19,10 @@
             <div class="page-container">
                 <header class="page-header">
                     <div>
-                        <p class="eyebrow">Version 1.0 feedback loop</p>
+                        <p class="eyebrow">Version 2.0 feedback workflow</p>
                         <h1 class="page-title">Feedback & Bug Reports</h1>
                         <p class="page-description">
-                            Log real bugs, friction, and improvement ideas while using Fazal Notes.
+                            Submit issues, filter feedback, update status, and promote ideas directly into the roadmap.
                         </p>
                     </div>
                 </header>
@@ -42,8 +42,8 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="feedbackTitle">Title</label>
-                            <input id="feedbackTitle" class="form-control"
-                                placeholder="Example: Search should include tags" required>
+                            <input id="feedbackTitle" class="form-control" placeholder="Example: Add note templates"
+                                required>
                         </div>
 
                         <div class="mb-3">
@@ -56,13 +56,29 @@
                     </form>
 
                     <section class="glass-card feedback-list-card">
-                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
                             <div>
                                 <h2 class="h5 mb-1">Submitted Items</h2>
                                 <p class="mb-0 small" style="color: var(--fn-muted);">
-                                    Version 2 will add filtering, status workflow, and roadmap promotion.
+                                    Manage open → in progress → resolved.
                                 </p>
                             </div>
+                        </div>
+
+                        <div class="feedback-filters">
+                            <select id="typeFilter" class="form-select">
+                                <option value="">All types</option>
+                                <option value="bug">Bug</option>
+                                <option value="idea">Idea</option>
+                                <option value="improvement">Improvement</option>
+                            </select>
+
+                            <select id="statusFilter" class="form-select">
+                                <option value="">All statuses</option>
+                                <option value="open">Open</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
                         </div>
 
                         <div id="feedbackList" class="feedback-list"></div>

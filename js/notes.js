@@ -1,9 +1,23 @@
 "use strict";
 
 let selectedNoteId = null;
+let currentMode = "active";
 
 function getActiveNotes() {
     return loadWorkspace().notes.filter((note) => !note.deletedAt);
+}
+
+function getTrashNotes() {
+    return loadWorkspace().notes.filter((note) => note.deletedAt);
+}
+
+function getVisibleNotes() {
+    return currentMode === "trash" ? getTrashNotes() : getActiveNotes();
+}
+
+function ensureNoteV2Fields(note) {
+    if (!note.revisions) note.revisions = [];
+    return note;
 }
 
 function renderFilters() {
@@ -24,27 +38,38 @@ function renderFilters() {
 function filterNotes(query, folderId, tag) {
     const search = String(query || "").toLowerCase();
 
-    return getActiveNotes()
+    return getVisibleNotes()
         .filter((note) => {
-            const searchable = [
-                note.title,
-                note.content,
-                ...(note.tags || [])
-            ].join(" ").toLowerCase();
-
+            const searchable = [note.title, note.content, ...(note.tags || [])].join(" ").toLowerCase();
             const matchesSearch = !search || searchable.includes(search);
-            const matchesFolder = !folderId || note.folderId === folderId;
-            const matchesTag = !tag || (note.tags || []).includes(tag);
+            const matchesFolder = currentMode === "trash" || !folderId || note.folderId === folderId;
+            const matchesTag = currentMode === "trash" || !tag || (note.tags || []).includes(tag);
 
             return matchesSearch && matchesFolder && matchesTag;
         })
         .sort((a, b) => {
             if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-            return new Date(b.updatedAt) - new Date(a.updatedAt);
+            return new Date(b.updatedAt || b.deletedAt) - new Date(a.updatedAt || a.deletedAt);
         });
 }
 
+function renderModeControls() {
+    if ($("#notesModeControls").length) return;
+
+    $(".notes-toolbar").prepend(`
+    <div id="notesModeControls" class="d-flex gap-2">
+      <button id="activeModeBtn" class="btn-ghost flex-fill" type="button">Active Notes</button>
+      <button id="trashModeBtn" class="btn-ghost flex-fill" type="button">Trash</button>
+    </div>
+  `);
+}
+
 function renderNoteList() {
+    renderModeControls();
+
+    $("#activeModeBtn").toggleClass("is-pinned", currentMode === "active");
+    $("#trashModeBtn").toggleClass("is-pinned", currentMode === "trash");
+
     const query = $("#searchInput").val();
     const folderId = $("#folderFilter").val();
     const tag = $("#tagFilter").val();
@@ -52,7 +77,7 @@ function renderNoteList() {
     const notes = filterNotes(query, folderId, tag);
 
     if (!notes.length) {
-        $("#noteList").html(renderEmptyState("No matching notes found."));
+        $("#noteList").html(renderEmptyState(currentMode === "trash" ? "Trash is empty." : "No matching notes found."));
         return;
     }
 
@@ -60,10 +85,11 @@ function renderNoteList() {
         notes.map((note) => `
       <button class="note-list-item ${note.id === selectedNoteId ? "active" : ""}" data-note-id="${note.id}" type="button">
         <p class="note-list-title">
-          <span>${note.pinned ? "★ " : ""}${escapeHtml(note.title)}</span>
+          <span>${note.pinned && !note.deletedAt ? "★ " : ""}${escapeHtml(note.title)}</span>
         </p>
         <p class="note-list-preview">${escapeHtml(note.content.slice(0, 110))}</p>
         <div class="note-tags">
+          ${note.deletedAt ? `<span class="badge-soft status-danger">Deleted ${escapeHtml(formatTimestamp(note.deletedAt))}</span>` : ""}
           ${(note.tags || []).map((tagName) => `<span class="badge-soft">#${escapeHtml(tagName)}</span>`).join("")}
         </div>
       </button>
@@ -73,10 +99,17 @@ function renderNoteList() {
 
 function renderEditor(noteId) {
     const workspace = loadWorkspace();
-    const note = workspace.notes.find((item) => item.id === noteId && !item.deletedAt);
+    const note = workspace.notes.find((item) => item.id === noteId);
 
     if (!note) {
         $("#editorMount").html(renderEmptyState("Select a note or create a new one."));
+        return;
+    }
+
+    ensureNoteV2Fields(note);
+
+    if (note.deletedAt) {
+        renderTrash(note);
         return;
     }
 
@@ -93,14 +126,16 @@ function renderEditor(noteId) {
         <button id="pinNoteBtn" class="btn-ghost pin-button ${note.pinned ? "is-pinned" : ""}" type="button">
           ${note.pinned ? "Unpin" : "Pin"}
         </button>
+        <button id="historyBtn" class="btn-ghost" type="button">History (${note.revisions.length})</button>
         <button id="saveNoteBtn" class="btn-fn" type="button">Save</button>
-        <button id="deleteNoteBtn" class="btn-ghost" type="button">Delete</button>
+        <button id="deleteNoteBtn" class="btn-ghost" type="button">Move to Trash</button>
       </div>
     </div>
 
     <div class="note-meta-strip">
       <span class="badge-soft">Created ${escapeHtml(formatTimestamp(note.createdAt))}</span>
       <span class="badge-soft">${escapeHtml(getFolderName(note.folderId))}</span>
+      <span class="badge-soft">V2 links: [[Note Title]]</span>
     </div>
 
     <div class="row g-3 mb-3">
@@ -137,12 +172,14 @@ function renderEditor(noteId) {
         <article id="notePreview" class="preview-surface"></article>
       </div>
     </div>
+
+    <div id="historyPanel" class="glass-card section-card mt-3" style="display:none;"></div>
   `);
 
-    $("#notePreview").html(renderMarkdown(note.content));
+    $("#notePreview").html(renderMarkdown(resolveNoteLinks(note.content)));
 }
 
-function createNote() {
+function createNote(titleFromLink) {
     const workspace = loadWorkspace();
 
     let folderId = workspace.folders[0]?.id;
@@ -158,11 +195,12 @@ function createNote() {
 
     const note = {
         id: generateId("note"),
-        title: "Untitled Note",
-        content: "# Untitled Note\n\nStart writing here...",
+        title: titleFromLink || "Untitled Note",
+        content: titleFromLink ? `# ${titleFromLink}\n\nCreated from a missing note link.` : "# Untitled Note\n\nStart writing here...",
         folderId,
         tags: [],
         pinned: false,
+        revisions: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
@@ -174,6 +212,7 @@ function createNote() {
     addActivityLog("Notes", "Created note", note.title);
 
     selectedNoteId = note.id;
+    currentMode = "active";
 
     renderFilters();
     renderNoteList();
@@ -181,11 +220,36 @@ function createNote() {
     showStatus("New note created.", "success");
 }
 
-function editNote(id) {
+function saveRevision(noteId) {
     const workspace = loadWorkspace();
-    const note = workspace.notes.find((item) => item.id === id);
+    const note = workspace.notes.find((item) => item.id === noteId);
 
     if (!note) return;
+
+    ensureNoteV2Fields(note);
+
+    note.revisions.unshift({
+        id: generateId("revision"),
+        title: note.title,
+        content: note.content,
+        folderId: note.folderId,
+        tags: [...(note.tags || [])],
+        pinned: note.pinned,
+        createdAt: new Date().toISOString()
+    });
+
+    note.revisions = note.revisions.slice(0, 30);
+
+    saveWorkspace(workspace);
+}
+
+function editNote(id) {
+    const workspace = loadWorkspace();
+    const note = workspace.notes.find((item) => item.id === id && !item.deletedAt);
+
+    if (!note) return;
+
+    saveRevision(id);
 
     note.title = $("#noteTitle").val().trim() || "Untitled Note";
     note.content = $("#noteContent").val();
@@ -196,6 +260,8 @@ function editNote(id) {
         .filter(Boolean);
     note.updatedAt = new Date().toISOString();
 
+    ensureNoteV2Fields(note);
+
     saveWorkspace(workspace);
 
     logUsageEvent("note_edited", note.id);
@@ -204,33 +270,99 @@ function editNote(id) {
     renderFilters();
     renderNoteList();
     renderEditor(note.id);
-    showStatus("Note saved.", "success");
+    showStatus("Note saved with revision history.", "success");
 }
 
 function deleteNote(id) {
     const workspace = loadWorkspace();
-    const note = workspace.notes.find((item) => item.id === id);
+    const note = workspace.notes.find((item) => item.id === id && !item.deletedAt);
 
     if (!note) return;
-    if (!confirm(`Delete "${note.title}"? Version 1 deletes permanently. Trash arrives in Version 2.`)) return;
+    if (!confirm(`Move "${note.title}" to Trash?`)) return;
 
-    workspace.notes = workspace.notes.filter((item) => item.id !== id);
+    note.deletedAt = new Date().toISOString();
+    note.updatedAt = new Date().toISOString();
+
     saveWorkspace(workspace);
 
-    logUsageEvent("note_deleted", id);
-    addActivityLog("Notes", "Deleted note", note.title);
+    logUsageEvent("note_trashed", id);
+    addActivityLog("Notes", "Moved note to Trash", note.title);
 
-    selectedNoteId = workspace.notes[0]?.id || null;
+    selectedNoteId = getActiveNotes()[0]?.id || null;
 
     renderFilters();
     renderNoteList();
     renderEditor(selectedNoteId);
-    showStatus("Note deleted.", "success");
+    showStatus("Note moved to Trash.", "success");
+}
+
+function renderTrash(note) {
+    $("#editorMount").html(`
+    <div class="editor-topbar">
+      <div>
+        <h2 class="h5 mb-1">${escapeHtml(note.title)}</h2>
+        <p class="mb-0 small" style="color: var(--fn-muted);">Deleted ${escapeHtml(formatTimestamp(note.deletedAt))}</p>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <button id="restoreTrashBtn" class="btn-fn" type="button">Restore</button>
+        <button id="permanentDeleteBtn" class="btn-ghost" type="button">Permanently Delete</button>
+      </div>
+    </div>
+
+    <div class="preview-surface mt-3">
+      ${renderMarkdown(resolveNoteLinks(note.content))}
+    </div>
+  `);
+}
+
+function restoreFromTrash(id) {
+    const workspace = loadWorkspace();
+    const note = workspace.notes.find((item) => item.id === id);
+
+    if (!note) return;
+
+    note.deletedAt = "";
+    note.updatedAt = new Date().toISOString();
+
+    saveWorkspace(workspace);
+
+    logUsageEvent("note_restored", id);
+    addActivityLog("Notes", "Restored note", note.title);
+
+    currentMode = "active";
+    selectedNoteId = id;
+
+    renderFilters();
+    renderNoteList();
+    renderEditor(id);
+    showStatus("Note restored.", "success");
+}
+
+function permanentlyDelete(id) {
+    const workspace = loadWorkspace();
+    const note = workspace.notes.find((item) => item.id === id);
+
+    if (!note) return;
+    if (!confirm(`Permanently delete "${note.title}"? This cannot be undone.`)) return;
+
+    workspace.notes = workspace.notes.filter((item) => item.id !== id);
+    saveWorkspace(workspace);
+
+    logUsageEvent("note_permanently_deleted", id);
+    addActivityLog("Notes", "Permanently deleted note", note.title);
+
+    selectedNoteId = getTrashNotes()[0]?.id || null;
+
+    renderFilters();
+    renderNoteList();
+    renderEditor(selectedNoteId);
+    showStatus("Note permanently deleted.", "success");
 }
 
 function togglePin(id) {
     const workspace = loadWorkspace();
-    const note = workspace.notes.find((item) => item.id === id);
+    const note = workspace.notes.find((item) => item.id === id && !item.deletedAt);
 
     if (!note) return;
 
@@ -266,6 +398,23 @@ function addFolder() {
     showStatus("Folder added.", "success");
 }
 
+function resolveNoteLinks(content) {
+    const workspace = loadWorkspace();
+
+    return String(content || "").replace(/\[\[(.*?)\]\]/g, (match, title) => {
+        const cleanTitle = title.trim();
+        const existingNote = workspace.notes.find((note) => {
+            return !note.deletedAt && note.title.toLowerCase() === cleanTitle.toLowerCase();
+        });
+
+        if (existingNote) {
+            return `[${cleanTitle}](note:${existingNote.id})`;
+        }
+
+        return `[Create "${cleanTitle}"](create-note:${encodeURIComponent(cleanTitle)})`;
+    });
+}
+
 function renderMarkdown(content) {
     let html = escapeHtml(content);
 
@@ -274,12 +423,89 @@ function renderMarkdown(content) {
     html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
     html = html.replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>");
     html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
+    html = html.replace(/\[(.*?)\]\(note:(.*?)\)/gim, `<a href="#" class="note-link" data-note-id="$2">$1</a>`);
+    html = html.replace(/\[(.*?)\]\(create-note:(.*?)\)/gim, `<a href="#" class="create-note-link" data-note-title="$2">$1</a>`);
     html = html.replace(/\[(.*?)\]\((https?:\/\/.*?)\)/gim, `<a href="$2" target="_blank">$1</a>`);
     html = html.replace(/^- (.*$)/gim, "<li>$1</li>");
     html = html.replace(/(<li>.*<\/li>)/gims, "<ul>$1</ul>");
     html = html.replace(/\n/g, "<br>");
 
     return html;
+}
+
+function renderHistoryPanel() {
+    const workspace = loadWorkspace();
+    const note = workspace.notes.find((item) => item.id === selectedNoteId);
+
+    if (!note) return;
+
+    ensureNoteV2Fields(note);
+
+    if (!note.revisions.length) {
+        $("#historyPanel")
+            .show()
+            .html(renderEmptyState("No revisions yet. Save this note once to create a restore point."));
+        return;
+    }
+
+    $("#historyPanel").show().html(`
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="h5 mb-1">Revision History</h3>
+        <p class="mb-0 small" style="color: var(--fn-muted);">Restore any previous saved version.</p>
+      </div>
+      <button id="closeHistoryBtn" class="btn-ghost" type="button">Close</button>
+    </div>
+
+    <div class="d-grid gap-2">
+      ${note.revisions.map((revision) => `
+        <article class="soft-card section-card">
+          <div class="d-flex justify-content-between gap-3 flex-wrap">
+            <div>
+              <h4 class="h6 mb-1">${escapeHtml(revision.title)}</h4>
+              <p class="mb-0 small" style="color: var(--fn-muted);">
+                Saved ${escapeHtml(formatTimestamp(revision.createdAt))}
+              </p>
+            </div>
+            <button class="btn-fn restore-revision-btn" data-revision-id="${revision.id}" type="button">Restore</button>
+          </div>
+          <p class="mt-2 mb-0 small" style="color: var(--fn-muted);">
+            ${escapeHtml(revision.content.slice(0, 170))}
+          </p>
+        </article>
+      `).join("")}
+    </div>
+  `);
+}
+
+function restoreRevision(noteId, revisionId) {
+    const workspace = loadWorkspace();
+    const note = workspace.notes.find((item) => item.id === noteId);
+
+    if (!note) return;
+
+    const revision = (note.revisions || []).find((item) => item.id === revisionId);
+
+    if (!revision) return;
+
+    saveRevision(noteId);
+
+    note.title = revision.title;
+    note.content = revision.content;
+    note.folderId = revision.folderId;
+    note.tags = [...(revision.tags || [])];
+    note.pinned = revision.pinned;
+    note.updatedAt = new Date().toISOString();
+
+    saveWorkspace(workspace);
+
+    logUsageEvent("revision_restored", note.id);
+    addActivityLog("Notes", "Restored revision", note.title);
+
+    renderFilters();
+    renderNoteList();
+    renderEditor(note.id);
+    showStatus("Revision restored.", "success");
 }
 
 $(document).ready(function () {
@@ -292,10 +518,26 @@ $(document).ready(function () {
     renderNoteList();
     renderEditor(selectedNoteId);
 
-    $("#newNoteBtn").on("click", createNote);
-    $("#addFolderBtn").on("click", addFolder);
+    $("#newNoteBtn").on("click", function () {
+        createNote();
+    });
 
+    $("#addFolderBtn").on("click", addFolder);
     $("#searchInput, #folderFilter, #tagFilter").on("input change", renderNoteList);
+
+    $(document).on("click", "#activeModeBtn", function () {
+        currentMode = "active";
+        selectedNoteId = getActiveNotes()[0]?.id || null;
+        renderNoteList();
+        renderEditor(selectedNoteId);
+    });
+
+    $(document).on("click", "#trashModeBtn", function () {
+        currentMode = "trash";
+        selectedNoteId = getTrashNotes()[0]?.id || null;
+        renderNoteList();
+        renderEditor(selectedNoteId);
+    });
 
     $(document).on("click", ".note-list-item", function () {
         selectedNoteId = $(this).data("note-id");
@@ -304,7 +546,7 @@ $(document).ready(function () {
     });
 
     $(document).on("input", "#noteContent", function () {
-        $("#notePreview").html(renderMarkdown($(this).val()));
+        $("#notePreview").html(renderMarkdown(resolveNoteLinks($(this).val())));
     });
 
     $(document).on("click", "#saveNoteBtn", function () {
@@ -317,5 +559,37 @@ $(document).ready(function () {
 
     $(document).on("click", "#pinNoteBtn", function () {
         togglePin(selectedNoteId);
+    });
+
+    $(document).on("click", "#historyBtn", renderHistoryPanel);
+
+    $(document).on("click", "#closeHistoryBtn", function () {
+        $("#historyPanel").hide();
+    });
+
+    $(document).on("click", ".restore-revision-btn", function () {
+        restoreRevision(selectedNoteId, $(this).data("revision-id"));
+    });
+
+    $(document).on("click", "#restoreTrashBtn", function () {
+        restoreFromTrash(selectedNoteId);
+    });
+
+    $(document).on("click", "#permanentDeleteBtn", function () {
+        permanentlyDelete(selectedNoteId);
+    });
+
+    $(document).on("click", ".note-link", function (event) {
+        event.preventDefault();
+        selectedNoteId = $(this).data("note-id");
+        currentMode = "active";
+        renderNoteList();
+        renderEditor(selectedNoteId);
+    });
+
+    $(document).on("click", ".create-note-link", function (event) {
+        event.preventDefault();
+        const title = decodeURIComponent($(this).data("note-title"));
+        createNote(title);
     });
 });
