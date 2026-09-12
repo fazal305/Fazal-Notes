@@ -1,6 +1,6 @@
 # Fazal Notes
 
-A real note-taking app I built and use daily — not a demo. This repo documents its actual version history: a 1.0 release, real usage analytics, a real feedback/bug loop, and a 2.0 release built in response to that feedback.
+A real note-taking app I built and use daily — not a demo. Everything runs client-side in localStorage, single-user, single-browser, with no backend or server. This repo documents its actual version history: a 1.0 release, analytics computed from my own local usage events, a feedback/bug tracker I use to log issues to myself, and a 2.0 release built in response to that self-tracked feedback.
 
 ## Live Links
 
@@ -9,9 +9,9 @@ A real note-taking app I built and use daily — not a demo. This repo documents
 
 ## Overview
 
-Fazal Notes is a local-first browser note-taking product with folders, tags, search, pinning, markdown preview, note linking, revision history, Trash recovery, feedback tracking, a public-style roadmap, changelog discipline, and real usage analytics.
+Fazal Notes is a local-first, single-user browser note-taking app (localStorage only, no backend, no accounts, no other users) with folders, tags, search, pinning, markdown preview, note linking, revision history, Trash recovery, a personal feedback/bug tracker, a public-style roadmap layout, changelog discipline, and analytics computed from my own local usage events.
 
-It is built as a real product lifecycle project: Version 1.0 shipped the usable notes app, then Version 2.0 added iteration features based on the product feedback loop.
+It's built as a real product lifecycle exercise: Version 1.0 shipped the usable notes app, then Version 2.0 added iteration features based on issues and ideas I logged for myself in the feedback tracker — the "product loop" here is self-directed, not fed by external users.
 
 ## Version History
 
