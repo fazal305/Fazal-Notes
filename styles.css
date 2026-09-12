@@ -10,7 +10,7 @@
   --fn-warning: #facc15;
   --fn-danger: #fb7185;
   --fn-radius: 18px;
-  --fn-font-family: Inter, sans-serif;
+  --fn-font-family: "Plus Jakarta Sans", sans-serif;
   --fn-border: rgba(255, 255, 255, 0.12);
   --fn-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
 }
