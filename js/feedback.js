@@ -3,53 +3,57 @@
 const feedbackStatuses = ["open", "in-progress", "resolved"];
 
 function submitFeedback(type, title, description) {
-    const workspace = loadWorkspace();
+  const workspace = loadWorkspace();
 
-    const item = {
-        id: generateId("feedback"),
-        type,
-        title,
-        description,
-        status: "open",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
+  const item = {
+    id: generateId("feedback"),
+    type,
+    title,
+    description,
+    status: "open",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 
-    workspace.feedbackItems.unshift(item);
+  workspace.feedbackItems.unshift(item);
 
-    saveWorkspace(workspace);
-    logUsageEvent("feedback_submitted", item.id);
-    addActivityLog("Feedback", "Submitted feedback", item.title);
+  saveWorkspace(workspace);
+  logUsageEvent("feedback_submitted", item.id);
+  addActivityLog("Feedback", "Submitted feedback", item.title);
 
-    renderFeedbackList();
-    showStatus("Feedback submitted.", "success");
+  renderFeedbackList();
+  showStatus("Feedback submitted.", "success");
 }
 
 function filterFeedback(type, status) {
-    const workspace = loadWorkspace();
+  const workspace = loadWorkspace();
 
-    return workspace.feedbackItems
-        .filter((item) => {
-            const matchesType = !type || item.type === type;
-            const matchesStatus = !status || item.status === status;
+  return workspace.feedbackItems
+    .filter((item) => {
+      const matchesType = !type || item.type === type;
+      const matchesStatus = !status || item.status === status;
 
-            return matchesType && matchesStatus;
-        })
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      return matchesType && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
 function renderFeedbackList() {
-    const type = $("#typeFilter").val();
-    const status = $("#statusFilter").val();
-    const items = filterFeedback(type, status);
+  const type = $("#typeFilter").val();
+  const status = $("#statusFilter").val();
+  const items = filterFeedback(type, status);
 
-    if (!items.length) {
-        $("#feedbackList").html(renderEmptyState("No feedback matches these filters."));
-        return;
-    }
-
+  if (!items.length) {
     $("#feedbackList").html(
-        items.map((item) => `
+      renderEmptyState("No feedback matches these filters."),
+    );
+    return;
+  }
+
+  $("#feedbackList").html(
+    items
+      .map(
+        (item) => `
       <article class="soft-card feedback-item">
         <div class="feedback-item-header">
           <div>
@@ -67,7 +71,9 @@ function renderFeedbackList() {
         </div>
 
         <div class="feedback-actions">
-          ${feedbackStatuses.map((statusOption) => `
+          ${feedbackStatuses
+            .map(
+              (statusOption) => `
             <button
               class="btn-ghost"
               type="button"
@@ -77,99 +83,107 @@ function renderFeedbackList() {
             >
               ${escapeHtml(statusOption)}
             </button>
-          `).join("")}
+          `,
+            )
+            .join("")}
 
           <button class="btn-fn" type="button" data-action="promote" data-id="${item.id}">
             Promote to Roadmap
           </button>
         </div>
       </article>
-    `).join("")
-    );
+    `,
+      )
+      .join(""),
+  );
 }
 
 function updateFeedbackStatus(id, status) {
-    const workspace = loadWorkspace();
-    const item = workspace.feedbackItems.find((feedback) => feedback.id === id);
+  const workspace = loadWorkspace();
+  const item = workspace.feedbackItems.find((feedback) => feedback.id === id);
 
-    if (!item) return;
+  if (!item) return;
 
-    item.status = status;
-    item.updatedAt = new Date().toISOString();
+  item.status = status;
+  item.updatedAt = new Date().toISOString();
 
-    saveWorkspace(workspace);
-    logUsageEvent("feedback_status_changed", item.id);
-    addActivityLog("Feedback", "Updated feedback status", `${item.title} → ${status}`);
+  saveWorkspace(workspace);
+  logUsageEvent("feedback_status_changed", item.id);
+  addActivityLog(
+    "Feedback",
+    "Updated feedback status",
+    `${item.title} → ${status}`,
+  );
 
-    renderFeedbackList();
-    showStatus("Feedback status updated.", "success");
+  renderFeedbackList();
+  showStatus("Feedback status updated.", "success");
 }
 
 function promoteToRoadmap(id) {
-    const workspace = loadWorkspace();
-    const item = workspace.feedbackItems.find((feedback) => feedback.id === id);
+  const workspace = loadWorkspace();
+  const item = workspace.feedbackItems.find((feedback) => feedback.id === id);
 
-    if (!item) return;
+  if (!item) return;
 
-    const alreadyPromoted = workspace.featureRequests.some((feature) => {
-        return feature.title.toLowerCase() === item.title.toLowerCase();
-    });
+  const alreadyPromoted = workspace.featureRequests.some((feature) => {
+    return feature.title.toLowerCase() === item.title.toLowerCase();
+  });
 
-    if (alreadyPromoted) {
-        showStatus("This item already exists on the roadmap.", "danger");
-        return;
-    }
+  if (alreadyPromoted) {
+    showStatus("This item already exists on the roadmap.", "danger");
+    return;
+  }
 
-    const feature = {
-        id: generateId("feature"),
-        title: item.title,
-        description: item.description,
-        status: "planned",
-        votes: 0,
-        createdAt: new Date().toISOString(),
-        sourceFeedbackId: item.id
-    };
+  const feature = {
+    id: generateId("feature"),
+    title: item.title,
+    description: item.description,
+    status: "planned",
+    votes: 0,
+    createdAt: new Date().toISOString(),
+    sourceFeedbackId: item.id,
+  };
 
-    workspace.featureRequests.unshift(feature);
-    item.status = "in-progress";
-    item.updatedAt = new Date().toISOString();
+  workspace.featureRequests.unshift(feature);
+  item.status = "in-progress";
+  item.updatedAt = new Date().toISOString();
 
-    saveWorkspace(workspace);
-    logUsageEvent("feedback_promoted_to_roadmap", item.id);
-    addActivityLog("Feedback", "Promoted feedback to roadmap", item.title);
+  saveWorkspace(workspace);
+  logUsageEvent("feedback_promoted_to_roadmap", item.id);
+  addActivityLog("Feedback", "Promoted feedback to roadmap", item.title);
 
-    renderFeedbackList();
-    showStatus("Feedback promoted to Roadmap.", "success");
+  renderFeedbackList();
+  showStatus("Feedback promoted to Roadmap.", "success");
 }
 
 $(document).ready(function () {
-    $("#sidebarMount").html(renderSidebar("feedback"));
+  $("#sidebarMount").html(renderSidebar("feedback"));
 
-    renderFeedbackList();
+  renderFeedbackList();
 
-    $("#feedbackForm").on("submit", function (event) {
-        event.preventDefault();
+  $("#feedbackForm").on("submit", function (event) {
+    event.preventDefault();
 
-        const type = $("#feedbackType").val();
-        const title = $("#feedbackTitle").val().trim();
-        const description = $("#feedbackDescription").val().trim();
+    const type = $("#feedbackType").val();
+    const title = $("#feedbackTitle").val().trim();
+    const description = $("#feedbackDescription").val().trim();
 
-        if (!title || !description) {
-            showStatus("Please fill in the title and description.", "danger");
-            return;
-        }
+    if (!title || !description) {
+      showStatus("Please fill in the title and description.", "danger");
+      return;
+    }
 
-        submitFeedback(type, title, description);
-        this.reset();
-    });
+    submitFeedback(type, title, description);
+    this.reset();
+  });
 
-    $("#typeFilter, #statusFilter").on("change", renderFeedbackList);
+  $("#typeFilter, #statusFilter").on("change", renderFeedbackList);
 
-    $(document).on("click", "[data-action='status']", function () {
-        updateFeedbackStatus($(this).data("id"), $(this).data("status"));
-    });
+  $(document).on("click", "[data-action='status']", function () {
+    updateFeedbackStatus($(this).data("id"), $(this).data("status"));
+  });
 
-    $(document).on("click", "[data-action='promote']", function () {
-        promoteToRoadmap($(this).data("id"));
-    });
+  $(document).on("click", "[data-action='promote']", function () {
+    promoteToRoadmap($(this).data("id"));
+  });
 });
